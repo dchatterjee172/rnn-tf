@@ -14,5 +14,5 @@ output=tf.nn.softmax(tf.matmul(state,out_w))
 prev_state=state
 loss=tf.reduce_mean(tf.square(output-out))
 opti=tf.train.GradientDescentOptimizer(0.2).minimize(loss)
-
-
+with open("wordsEn.txt") as word_file:
+    english_words = list(word.strip().lower() for word in word_file)
