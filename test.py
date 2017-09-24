@@ -2,45 +2,36 @@ import tensorflow as tf
 import numpy as np
 import random as rn
 internal_dim=1
-char=[]
-chars=set()
-with open("wordsEn.txt") as word_file:
-    english_words = list(word.strip().lower() for word in word_file)
-for w in range(0,len(english_words)):
-    english_words[w]=english_words[w]+'.'
-    chars.update(english_words[w])
-char=list(chars)
-num_char=len(char)
-def chartovec(b):
-    a=np.zeros((num_char,1))
-    a[char.index(b)][0]=1
-    return a
-def vectochar(a):
-    b=max(a)
-    b=a.index(b)
-    return char[b]
-inp=tf.placeholder(name="inp",dtype=tf.float32,shape=(num_char,1))
-out=tf.placeholder(name="out",dtype=tf.float32,shape=(1,num_char))
+data_len=10
+total_data=20000
+data=np.zeros(shape=(total_data,data_len))
+for i in range(0,total_data):
+    for j in range(0,data_len):
+        if rn.uniform(0,1)>.5:
+            data[i][j]=1
+inp=tf.placeholder(name="inp",dtype=tf.float32,shape=(1,1))
+out=tf.placeholder(name="out",dtype=tf.float32,shape=(1,1))
 prev_state=tf.placeholder(name="prev_state",dtype=tf.float32,shape=(1,internal_dim))
-ploss=tf.placeholder(name="prev_state",dtype=tf.float32,shape=())
+ploss=tf.placeholder(name="ploss",dtype=tf.float32,shape=())
 b=tf.get_variable("b",initializer=tf.random_normal(shape=(1,internal_dim),mean=0,stddev=1))
 prev_w=tf.get_variable("prev_w",initializer=tf.random_normal(shape=(internal_dim,internal_dim),mean=0,stddev=1))
-in_w=tf.get_variable("in_w",initializer=tf.random_normal(shape=(num_char,internal_dim),mean=0,stddev=1))
-out_w=tf.get_variable("out_w",initializer=tf.random_normal(shape=(internal_dim,num_char),mean=0,stddev=1))
-state=tf.tanh(tf.matmul(tf.transpose(in_w),inp)+tf.matmul(prev_state,prev_w)+b)
-output=tf.nn.softmax(tf.matmul(state,out_w))
-loss=tf.reduce_mean(tf.square(output-out))+ploss
-opti=tf.train.GradientDescentOptimizer(0.02).minimize(loss)
+in_w=tf.get_variable("in_w",initializer=tf.random_normal(shape=(1,internal_dim),mean=0,stddev=1))
+out_w=tf.get_variable("out_w",initializer=tf.random_normal(shape=(internal_dim,1),mean=0,stddev=1))
+state=tf.nn.elu(tf.matmul(inp,in_w)+tf.matmul(prev_state,prev_w)+b)
+output=tf.nn.elu(tf.matmul(state,out_w))
+loss=tf.reduce_sum(tf.square(output-out))/2+ploss
+opti=tf.train.GradientDescentOptimizer(0.025).minimize(loss)
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     writer = tf.summary.FileWriter("tfg", sess.graph)
-    for w in english_words:
-        for i in range(0,3):
-            l=0
-            s=np.zeros((1,internal_dim),dtype=np.float)
-            for j in range(0,len(w)-1):
-                inp_d={inp:chartovec(w[j]),out:np.transpose(chartovec(w[j+1])),prev_state:s, ploss:l}
-                res=sess.run([opti,loss,out,state],feed_dict=inp_d)
-                s=res[3]
-                l+=res[1]
-        print(res[1])
+    for i in range(0,total_data):
+        sm,p_loss=0,0
+        ps=np.zeros(shape=(1,internal_dim))
+        for j in range(0,data_len):
+            sm+=data[i][j]
+            inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:p_loss,prev_state:ps}
+            r=sess.run([opti,loss,state],feed_dict=inp_dict)
+            p_loss+=r[1]
+            ps=r[2]
+        print(r[1])
+
