@@ -19,18 +19,30 @@ out_w=tf.get_variable("out_w",initializer=tf.random_normal(shape=(internal_dim,1
 state=tf.nn.elu(tf.matmul(inp,in_w)+tf.matmul(prev_state,prev_w))
 output=tf.nn.elu(tf.matmul(state,out_w))
 loss=tf.reduce_sum(tf.square(output-out))+ploss
-opti=tf.train.GradientDescentOptimizer(0.03).minimize(loss)
+#opti=tf.train.GradientDescentOptimizer(0.03).minimize(loss)
+dout_w=tf.gradients(loss,out_w)
+dprev_w=tf.gradients(loss,prev_w)
+din_w=tf.gradients(loss,in_w)
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     writer = tf.summary.FileWriter("tfg", sess.graph)
+    lrate=.03
     for i in range(0,total_data):
-        sm,p_loss=0,0
-        ps=np.zeros(shape=(1,internal_dim))
+        sm=0
+        closs=np.zeros(shape=(data_len,))
+        states=np.zeros(shape=(data_len,1,internal_dim))
+        tdout_w,tdprev_w,tdin_w=np.zeros(shape=(internal_dim,1)),np.zeros(shape=(internal_dim,internal_dim)),np.zeros(shape=(1,internal_dim))
         for j in range(0,data_len):
             sm+=data[i][j]
-            inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:p_loss,prev_state:ps}
-            r=sess.run([opti,loss,state],feed_dict=inp_dict)
-            p_loss+=r[1]
-            ps=r[2]
-        print(r[1])
-
+            if j>0:
+                inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:closs[j-1],prev_state:states[j-1]}
+            else:
+                inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:0,prev_state:np.zeros(shape=(1,internal_dim))}
+            r=sess.run([loss,state,output,dout_w,dprev_w,din_w],feed_dict=inp_dict)
+            closs[j]=r[0]
+            states[j]=r[1]
+            tdout_w+=r[3][0]
+            tdprev_w+=r[4][0]
+            tdin_w+=r[5][0]
+        sess.run([out_w.assign((out_w+tdout_w)*lrate),in_w.assign((in_w+tdin_w)*lrate),prev_w.assign((prev_w+tdprev_w)*lrate)])
+        print(r[0])
