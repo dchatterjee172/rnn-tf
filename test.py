@@ -19,10 +19,16 @@ out_w=tf.get_variable("out_w",initializer=tf.random_normal(shape=(internal_dim,1
 state=tf.nn.elu(tf.matmul(inp,in_w)+tf.matmul(prev_state,prev_w))
 output=tf.nn.elu(tf.matmul(state,out_w))
 loss=tf.reduce_sum(tf.square(output-out))+ploss
-#opti=tf.train.GradientDescentOptimizer(0.03).minimize(loss)
 dout_w=tf.gradients(loss,out_w)
 dprev_w=tf.gradients(loss,prev_w)
 din_w=tf.gradients(loss,in_w)
+tdo=tf.placeholder(name="gradientdout_w",dtype=tf.float32,shape=(internal_dim,1))
+tdh=tf.placeholder(name="gradientdh_w",dtype=tf.float32,shape=(internal_dim,internal_dim))
+tdi=tf.placeholder(name="gradientdin_w",dtype=tf.float32,shape=(1,internal_dim))
+lr=tf.placeholder(name="lrate",dtype=tf.float32,shape=())
+out_w=out_w-tdo*lr
+prev_w=prev_w-tdh*lr
+in_w=in_w-tdi*lr
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     writer = tf.summary.FileWriter("tfg", sess.graph)
@@ -44,5 +50,7 @@ with tf.Session() as sess:
             tdout_w+=r[3][0]
             tdprev_w+=r[4][0]
             tdin_w+=r[5][0]
-        sess.run([out_w.assign(out_w-tdout_w*lrate),in_w.assign(in_w-tdin_w*lrate),prev_w.assign(prev_w-tdprev_w*lrate)])
+        inp_dict={lr:lrate,tdo:tdout_w,tdh:tdprev_w,tdi:tdin_w}
+        sess.run([in_w,out_w,prev_w],feed_dict=inp_dict)
+        del closs,states,tdout_w,tdprev_w,tdin_w
         print(r[0])
