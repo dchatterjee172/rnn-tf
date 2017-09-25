@@ -44,5 +44,5 @@ with tf.Session() as sess:
             tdout_w+=r[3][0]
             tdprev_w+=r[4][0]
             tdin_w+=r[5][0]
-        sess.run([out_w.assign((out_w+tdout_w)*lrate),in_w.assign((in_w+tdin_w)*lrate),prev_w.assign((prev_w+tdprev_w)*lrate)])
+        sess.run([out_w.assign(out_w-tdout_w*lrate),in_w.assign(in_w-tdin_w*lrate),prev_w.assign(prev_w-tdprev_w*lrate)])
         print(r[0])
