@@ -13,9 +13,9 @@ inp=tf.placeholder(name="inp",dtype=tf.float32,shape=(1,1))
 out=tf.placeholder(name="out",dtype=tf.float32,shape=(1,1))
 prev_state=tf.placeholder(name="prev_state",dtype=tf.float32,shape=(1,internal_dim))
 ploss=tf.placeholder(name="ploss",dtype=tf.float32,shape=())
-prev_w=tf.get_variable("prev_w",initializer=tf.random_normal(shape=(internal_dim,internal_dim),mean=1,stddev=1))
-in_w=tf.get_variable("in_w",initializer=tf.random_normal(shape=(1,internal_dim),mean=1,stddev=1))
-out_w=tf.get_variable("out_w",initializer=tf.random_normal(shape=(internal_dim,1),mean=1,stddev=1))
+prev_w=tf.get_variable("prev_w",initializer=tf.random_normal(shape=(internal_dim,internal_dim),mean=.5,stddev=1))
+in_w=tf.get_variable("in_w",initializer=tf.random_normal(shape=(1,internal_dim),mean=.5,stddev=1))
+out_w=tf.get_variable("out_w",initializer=tf.random_normal(shape=(internal_dim,1),mean=.5,stddev=1))
 state=tf.nn.elu(tf.matmul(inp,in_w)+tf.matmul(prev_state,prev_w))
 output=tf.nn.elu(tf.matmul(state,out_w))
 loss=tf.reduce_sum(tf.square(output-out))+ploss
@@ -51,6 +51,5 @@ with tf.Session() as sess:
             tdprev_w+=r[4][0]
             tdin_w+=r[5][0]
         inp_dict={lr:lrate,tdo:tdout_w,tdh:tdprev_w,tdi:tdin_w}
-        sess.run([in_w,out_w,prev_w],feed_dict=inp_dict)
-        del closs,states,tdout_w,tdprev_w,tdin_w
-        print(r[0])
+        x=sess.run([in_w,out_w,prev_w],feed_dict=inp_dict)
+        print(r[0],r[3][0],r[4][0],r[5][0])
