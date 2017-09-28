@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import random as rn
-internal_dim=1
+internal_dim=2
 data_len=10
 total_data=20000
 data=np.zeros(shape=(total_data,data_len))
@@ -20,8 +20,9 @@ state=tf.nn.elu(tf.matmul(inp,in_w)+tf.matmul(prev_state,prev_w))
 output=tf.nn.elu(tf.matmul(state,out_w))
 loss=tf.reduce_sum(tf.square(out-output))+ploss
 dout_w=tf.gradients(loss,out_w)
-dprev_w=tf.gradients(loss,prev_w)
-din_w=tf.gradients(loss,in_w)
+d_state=tf.gradients(loss,state)
+dprev_w=tf.gradients(state,prev_w)
+din_w=tf.gradients(state,in_w)
 tdo=tf.placeholder(name="gradientdout_w",dtype=tf.float32,shape=(internal_dim,1))
 tdh=tf.placeholder(name="gradientdh_w",dtype=tf.float32,shape=(internal_dim,internal_dim))
 tdi=tf.placeholder(name="gradientdin_w",dtype=tf.float32,shape=(1,internal_dim))
@@ -32,7 +33,7 @@ change_i=tf.assign(in_w,in_w-tdi*lr)
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     writer = tf.summary.FileWriter("tfg", sess.graph)
-    lrate=.03
+    lrate=.009
     for i in range(0,total_data):
         sm=0
         closs=np.zeros(shape=(data_len,))
@@ -44,12 +45,12 @@ with tf.Session() as sess:
                 inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:closs[j-1],prev_state:states[j-1]}
             else:
                 inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:0,prev_state:np.zeros(shape=(1,internal_dim))}
-            r=sess.run([loss,state,output,dout_w,dprev_w,din_w],feed_dict=inp_dict)
+            r=sess.run([loss,state,output],feed_dict=inp_dict)
             closs[j]=r[0]
             states[j]=r[1]
-            tdout_w+=r[3][0]
-            tdprev_w+=r[4][0]
-            tdin_w+=r[5][0]
+        for j in reversed(range(2,data_len)):
+            inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:closs[j-1],prev_state:states[j-1]}
+            m=sess.run([din_w,dout_w,dprev_w,d_state],feed_dict=inp_dict)
         inp_dict={lr:lrate,tdo:tdout_w,tdh:tdprev_w,tdi:tdin_w}
         x=sess.run([change_o,change_i,change_h],feed_dict=inp_dict)
-        print(r[0],r[3][0],r[4][0],r[5][0])
+        print(r[0],sm,r[2][0])
