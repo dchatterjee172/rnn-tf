@@ -13,9 +13,9 @@ inp=tf.placeholder(name="inp",dtype=tf.float32,shape=(1,1))
 out=tf.placeholder(name="out",dtype=tf.float32,shape=(1,1))
 prev_state=tf.placeholder(name="prev_state",dtype=tf.float32,shape=(1,internal_dim))
 ploss=tf.placeholder(name="ploss",dtype=tf.float32,shape=())
-prev_w=tf.get_variable("prev_w",initializer=tf.random_normal(shape=(internal_dim,internal_dim),mean=.5,stddev=1))
-in_w=tf.get_variable("in_w",initializer=tf.random_normal(shape=(1,internal_dim),mean=.5,stddev=1))
-out_w=tf.get_variable("out_w",initializer=tf.random_normal(shape=(internal_dim,1),mean=.5,stddev=1))
+prev_w=tf.get_variable("prev_w",initializer=tf.random_normal(shape=(internal_dim,internal_dim),mean=0,stddev=1))
+in_w=tf.get_variable("in_w",initializer=tf.random_normal(shape=(1,internal_dim),mean=0,stddev=1))
+out_w=tf.get_variable("out_w",initializer=tf.random_normal(shape=(internal_dim,1),mean=0,stddev=1))
 state=tf.nn.elu(tf.matmul(inp,in_w)+tf.matmul(prev_state,prev_w))
 output=tf.matmul(state,out_w)
 loss=tf.reduce_sum(tf.square(out-output)/2)+ploss
@@ -35,7 +35,7 @@ change_i=tf.assign(in_w,in_w-tdi*lr)
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     writer = tf.summary.FileWriter("tfg", sess.graph)
-    lrate=1
+    lrate=.5
     for i in range(0,total_data):
         sm=np.zeros(shape=(data_len,))
         closs=np.zeros(shape=(data_len,))
