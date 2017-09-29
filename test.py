@@ -7,7 +7,7 @@ total_data=20000
 data=np.zeros(shape=(total_data,data_len))
 for i in range(0,total_data):
     for j in range(0,data_len):
-        if rn.uniform(0,1)>-5:
+        if rn.uniform(0,1)>.5:
             data[i][j]=1
 inp=tf.placeholder(name="inp",dtype=tf.float32,shape=(1,1))
 out=tf.placeholder(name="out",dtype=tf.float32,shape=(1,1))
@@ -66,8 +66,7 @@ with tf.Session() as sess:
             dprestates[j]=m[3][0]
             tdprev_w=np.clip(tdprev_w,-.5,.5)
             tdin_w=np.clip(tdin_w,-.5,.5) 
-            tdout_w=np.clip(tdout_w,-.5,.5)
-            
+            tdout_w=np.clip(tdout_w,-.5,.5) 
         inp_dict={lr:lrate,tdo:tdout_w,tdh:tdprev_w,tdi:tdin_w}
         x=sess.run([change_o,change_i,change_h],feed_dict=inp_dict)
         print(r[0],sm[data_len-1],r[2][0])
