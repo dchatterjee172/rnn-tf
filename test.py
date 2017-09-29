@@ -19,10 +19,12 @@ out_w=tf.get_variable("out_w",initializer=tf.random_normal(shape=(internal_dim,1
 state=tf.nn.elu(tf.matmul(inp,in_w)+tf.matmul(prev_state,prev_w))
 output=tf.nn.elu(tf.matmul(state,out_w))
 loss=tf.reduce_sum(tf.square(out-output))+ploss
+pre=tf.placeholder(name="dstatepre",dtype=tf.float32,shape=(1,internal_dim))
 dout_w=tf.gradients(loss,out_w)
-d_state=tf.gradients(loss,state)
-dprev_w=tf.gradients(state,prev_w)
-din_w=tf.gradients(state,in_w)
+dstate=tf.gradients(loss,state)+pre
+dprestate=tf.gradients(state,prev_state,grad_ys=dstate[0]) 
+dprev_w=tf.gradients(state,prev_w,grad_ys=dstate[0])
+din_w=tf.gradients(state,in_w,grad_ys=dstate[0])
 tdo=tf.placeholder(name="gradientdout_w",dtype=tf.float32,shape=(internal_dim,1))
 tdh=tf.placeholder(name="gradientdh_w",dtype=tf.float32,shape=(internal_dim,internal_dim))
 tdi=tf.placeholder(name="gradientdin_w",dtype=tf.float32,shape=(1,internal_dim))
@@ -33,12 +35,13 @@ change_i=tf.assign(in_w,in_w-tdi*lr)
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     writer = tf.summary.FileWriter("tfg", sess.graph)
-    lrate=.009
+    lrate=.03
     for i in range(0,total_data):
         sm=0
         closs=np.zeros(shape=(data_len,))
         states=np.zeros(shape=(data_len,1,internal_dim))
         tdout_w,tdprev_w,tdin_w=np.zeros(shape=(internal_dim,1)),np.zeros(shape=(internal_dim,internal_dim)),np.zeros(shape=(1,internal_dim))
+        dprestates=np.zeros(shape=(data_len,1,internal_dim))
         for j in range(0,data_len):
             sm+=data[i][j]
             if j>0:
@@ -49,8 +52,15 @@ with tf.Session() as sess:
             closs[j]=r[0]
             states[j]=r[1]
         for j in reversed(range(2,data_len)):
-            inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:closs[j-1],prev_state:states[j-1]}
-            m=sess.run([din_w,dout_w,dprev_w,d_state],feed_dict=inp_dict)
+            if(j<data_len-1):
+                inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:closs[j-1],prev_state:states[j-1],pre:dprestates[j+1]}
+            else:
+                inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:closs[j-1],prev_state:states[j-1],pre:np.zeros(shape=(1,internal_dim))}
+            m=sess.run([din_w,dout_w,dprev_w,dprestate],feed_dict=inp_dict)
+            tdout_w+=m[1][0]
+            tdin_w+=m[0][0]
+            tdprev_w+=m[2][0]
+            dprestates[j]=m[3][0]
         inp_dict={lr:lrate,tdo:tdout_w,tdh:tdprev_w,tdi:tdin_w}
         x=sess.run([change_o,change_i,change_h],feed_dict=inp_dict)
         print(r[0],sm,r[2][0])
