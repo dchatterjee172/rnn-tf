@@ -17,8 +17,8 @@ prev_w=tf.get_variable("prev_w",initializer=tf.random_normal(shape=(internal_dim
 in_w=tf.get_variable("in_w",initializer=tf.random_normal(shape=(1,internal_dim),mean=.5,stddev=1))
 out_w=tf.get_variable("out_w",initializer=tf.random_normal(shape=(internal_dim,1),mean=.5,stddev=1))
 state=tf.nn.elu(tf.matmul(inp,in_w)+tf.matmul(prev_state,prev_w))
-output=tf.nn.elu(tf.matmul(state,out_w))
-loss=tf.reduce_sum(tf.square(out-output))+ploss
+output=tf.matmul(state,out_w)
+loss=tf.reduce_sum(tf.square(out-output)/2)+ploss
 pre=tf.placeholder(name="dstatepre",dtype=tf.float32,shape=(1,internal_dim))
 dout_w=tf.gradients(loss,out_w)
 dstate=tf.gradients(loss,state)+pre
@@ -37,27 +37,28 @@ with tf.Session() as sess:
     writer = tf.summary.FileWriter("tfg", sess.graph)
     lrate=.03
     for i in range(0,total_data):
-        sm=0
+        sm=np.zeros(shape=(data_len,))
         closs=np.zeros(shape=(data_len,))
         states=np.zeros(shape=(data_len,1,internal_dim))
         tdout_w,tdprev_w,tdin_w=np.zeros(shape=(internal_dim,1)),np.zeros(shape=(internal_dim,internal_dim)),np.zeros(shape=(1,internal_dim))
         dprestates=np.zeros(shape=(data_len,1,internal_dim))
         for j in range(0,data_len):
-            sm+=data[i][j]
             if j>0:
-                inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:closs[j-1],prev_state:states[j-1]}
+                sm[j]=data[i][j]+sm[j-1]
+                inp_dict={inp:data[i][j].reshape(1,1),out:sm[j].reshape(1,1),ploss:closs[j-1],prev_state:states[j-1]}
             else:
-                inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:0,prev_state:np.zeros(shape=(1,internal_dim))}
+                sm[j]=data[i][j]
+                inp_dict={inp:data[i][j].reshape(1,1),out:sm[j].reshape(1,1),ploss:0,prev_state:np.zeros(shape=(1,internal_dim))}
             r=sess.run([loss,state,output],feed_dict=inp_dict)
             closs[j]=r[0]
             states[j]=r[1]
         for j in reversed(range(0,data_len)):
             if j<data_len-1:
-                inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:closs[j-1],prev_state:states[j-1],pre:dprestates[j+1]}
+                inp_dict={inp:data[i][j].reshape(1,1),out:sm[j].reshape(1,1),ploss:closs[j-1],prev_state:states[j-1],pre:dprestates[j+1]}
             elif j==0:
-                inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:0,prev_state:np.zeros(shape=(1,internal_dim)),pre:dprestates[j+1]} 
+                inp_dict={inp:data[i][j].reshape(1,1),out:sm[j].reshape(1,1),ploss:0,prev_state:np.zeros(shape=(1,internal_dim)),pre:dprestates[j+1]} 
             else:
-                inp_dict={inp:data[i][j].reshape(1,1),out:sm.reshape(1,1),ploss:closs[j-1],prev_state:states[j-1],pre:np.zeros(shape=(1,internal_dim))}
+                inp_dict={inp:data[i][j].reshape(1,1),out:sm[j].reshape(1,1),ploss:closs[j-1],prev_state:states[j-1],pre:np.zeros(shape=(1,internal_dim))}
             m=sess.run([din_w,dout_w,dprev_w,dprestate],feed_dict=inp_dict)
             tdout_w+=m[1][0]
             tdin_w+=m[0][0]
@@ -65,7 +66,8 @@ with tf.Session() as sess:
             dprestates[j]=m[3][0]
             tdprev_w=np.clip(tdprev_w,-1,1)
             tdin_w=np.clip(tdin_w,-1,1) 
-            tdout_w=np.clip(tdout_w,-1,1) 
+            tdout_w=np.clip(tdout_w,-1,1)
+            
         inp_dict={lr:lrate,tdo:tdout_w,tdh:tdprev_w,tdi:tdin_w}
         x=sess.run([change_o,change_i,change_h],feed_dict=inp_dict)
-        print(r[0],sm,r[2][0])
+        print(r[0],sm[data_len-1],r[2][0])
