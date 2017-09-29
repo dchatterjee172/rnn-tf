@@ -35,7 +35,7 @@ change_i=tf.assign(in_w,in_w-tdi*lr)
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
     writer = tf.summary.FileWriter("tfg", sess.graph)
-    lrate=.03
+    lrate=1
     for i in range(0,total_data):
         sm=np.zeros(shape=(data_len,))
         closs=np.zeros(shape=(data_len,))
@@ -70,3 +70,4 @@ with tf.Session() as sess:
         inp_dict={lr:lrate,tdo:tdout_w,tdh:tdprev_w,tdi:tdin_w}
         x=sess.run([change_o,change_i,change_h],feed_dict=inp_dict)
         print(r[0],sm[data_len-1],r[2][0])
+        lrate*=.99
