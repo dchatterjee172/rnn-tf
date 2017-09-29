@@ -7,7 +7,7 @@ total_data=20000
 data=np.zeros(shape=(total_data,data_len))
 for i in range(0,total_data):
     for j in range(0,data_len):
-        if rn.uniform(0,1)>.5:
+        if rn.uniform(0,1)>-5:
             data[i][j]=1
 inp=tf.placeholder(name="inp",dtype=tf.float32,shape=(1,1))
 out=tf.placeholder(name="out",dtype=tf.float32,shape=(1,1))
@@ -53,10 +53,10 @@ with tf.Session() as sess:
             closs[j]=r[0]
             states[j]=r[1]
         for j in reversed(range(0,data_len)):
-            if j<data_len-1:
+            if j==0:
+                inp_dict={inp:data[i][j].reshape(1,1),out:sm[j].reshape(1,1),ploss:0,prev_state:np.zeros(shape=(1,internal_dim)),pre:dprestates[j+1]}
+            elif j<data_len-1:
                 inp_dict={inp:data[i][j].reshape(1,1),out:sm[j].reshape(1,1),ploss:closs[j-1],prev_state:states[j-1],pre:dprestates[j+1]}
-            elif j==0:
-                inp_dict={inp:data[i][j].reshape(1,1),out:sm[j].reshape(1,1),ploss:0,prev_state:np.zeros(shape=(1,internal_dim)),pre:dprestates[j+1]} 
             else:
                 inp_dict={inp:data[i][j].reshape(1,1),out:sm[j].reshape(1,1),ploss:closs[j-1],prev_state:states[j-1],pre:np.zeros(shape=(1,internal_dim))}
             m=sess.run([din_w,dout_w,dprev_w,dprestate],feed_dict=inp_dict)
@@ -64,9 +64,9 @@ with tf.Session() as sess:
             tdin_w+=m[0][0]
             tdprev_w+=m[2][0]
             dprestates[j]=m[3][0]
-            tdprev_w=np.clip(tdprev_w,-1,1)
-            tdin_w=np.clip(tdin_w,-1,1) 
-            tdout_w=np.clip(tdout_w,-1,1)
+            tdprev_w=np.clip(tdprev_w,-.5,.5)
+            tdin_w=np.clip(tdin_w,-.5,.5) 
+            tdout_w=np.clip(tdout_w,-.5,.5)
             
         inp_dict={lr:lrate,tdo:tdout_w,tdh:tdprev_w,tdi:tdin_w}
         x=sess.run([change_o,change_i,change_h],feed_dict=inp_dict)
